@@ -47,59 +47,54 @@ const flights = [
   }
 ];
 
-app.get("/", (req, res) => {
-  res.json({
-    message: "Flight API is running",
-    example: "/flights?from=DUS&to=NOP&departureDate=2026-07-10&student=true"
-  });
-});
+function makeDemoResult(search) {
+  const month = search.month || "2026-08";
+  const day = search.departureDate || `${month}-10`;
+  const from = search.from || "DUS";
+  const to = search.to || "NOP";
+  const returnDate = search.returnDate || null;
+  const tripType = returnDate ? "roundtrip" : "oneway";
 
-app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
-});
+  const demoResults = [
+    {
+      provider: "demo",
+      airline: "Lufthansa",
+      from,
+      to,
+      departureDate: day,
+      returnDate,
+      tripType,
+      price: 240,
+      currency: "EUR",
+      passengerType: "adult",
+      note: "Demo result. Real live fares need official/partner API access."
+    },
+    {
+      provider: "demo",
+      airline: "Pegasus",
+      from,
+      to,
+      departureDate: day,
+      returnDate,
+      tripType,
+      price: 185,
+      currency: "EUR",
+      passengerType: "adult",
+      note: "Demo result. Real live fares need official/partner API access."
+    },
+    {
+      provider: "demo",
+      airline: "SunExpress",
+      from,
+      to,
+      departureDate: day,
+      returnDate,
+      tripType,
+      price: 205,
+      currency: "EUR",
+      passengerType: "adult",
+      note: "Demo result. Real live fares need official/partner API access."
+    }
+  ];
 
-app.get("/flights", (req, res) => {
-  const search = {
-    from: req.query.from ? String(req.query.from).toUpperCase() : null,
-    to: req.query.to ? String(req.query.to).toUpperCase() : null,
-    departureDate: req.query.departureDate || null,
-    returnDate: req.query.returnDate || null,
-    month: req.query.month || null,
-    tripType: req.query.tripType || null,
-    student: isTrue(req.query.student),
-    adults: req.query.adults || "1",
-    children: req.query.children || "0",
-    airline: req.query.airline || null
-  };
-
-  let results = flights;
-
-  if (search.from) results = results.filter((flight) => flight.from === search.from);
-  if (search.to) results = results.filter((flight) => flight.to === search.to);
-  if (search.departureDate) results = results.filter((flight) => flight.departureDate === search.departureDate);
-  if (search.returnDate) results = results.filter((flight) => flight.returnDate === search.returnDate);
-  if (search.month) results = results.filter((flight) => flight.departureDate.startsWith(search.month));
-  if (search.tripType) results = results.filter((flight) => flight.tripType === search.tripType);
-  if (search.student) results = results.filter((flight) => flight.passengerType === "student");
-  if (search.airline) {
-    results = results.filter((flight) =>
-      flight.airline.toLowerCase().includes(String(search.airline).toLowerCase())
-    );
-  }
-
-  res.json({
-    search,
-    count: results.length,
-    results,
-    warnings: [
-      {
-        provider: "official_airlines",
-        warning: "Live airline and THY student fares need official/partner API access. Website scraping is not used."
-      }
-    ]
-  });
-});
-
-app.listen(PORT, () => {
-  console.log(`API running on port ${PORT}`);
-});
+  if (search.student) {
