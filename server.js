@@ -98,3 +98,81 @@ function filterFlights(flights, search) {
 
   return results;
 }
+
+async function searchMockProvider(search) {
+  return {
+    provider: "mock",
+    status: "ok",
+    results: filterFlights(mockFlights, search),
+    warning: null
+  };
+}
+
+async function searchSkyscannerProvider() {
+  const apiKey = process.env.SKYSCANNER_API_KEY;
+
+  if (!apiKey) {
+    return {
+      provider: "skyscanner",
+      status: "not_configured",
+      results: [],
+      warning: "Skyscanner official API key is not configured. Website scraping is not used."
+    };
+  }
+
+  return {
+    provider: "skyscanner",
+    status: "todo",
+    results: [],
+    warning: "Skyscanner official API integration will be added after API access is available."
+  };
+}
+
+async function searchOfficialAirlineProviders() {
+  return {
+    provider: "official_airlines",
+    status: "todo",
+    results: [],
+    warning: "Official airline or partner APIs can be connected here. Website scraping is not used."
+  };
+}
+
+app.get("/", (req, res) => {
+  res.json({
+    message: "Flight API is running",
+    example: "/flights?from=DUS&to=NOP&departureDate=2026-07-10"
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
+app.get("/flights", async (req, res) => {
+  const search = normalizeSearchParams(req.query);
+
+  const providerResponses = await Promise.all([
+    searchMockProvider(search),
+    searchSkyscannerProvider(search),
+    searchOfficialAirlineProviders(search)
+  ]);
+
+  const results = providerResponses.flatMap((provider) => provider.results);
+  const warnings = providerResponses
+    .filter((provider) => provider.warning)
+    .map((provider) => ({
+      provider: provider.provider,
+      warning: provider.warning
+    }));
+
+  res.json({
+    search,
+    count: results.length,
+    results,
+    warnings
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`API running on port ${PORT}`);
+});
