@@ -3,7 +3,11 @@ const express = require("express");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const mockFlights = [
+function isTrue(value) {
+  return ["1", "true", "yes", "evet"].includes(String(value || "").toLowerCase());
+}
+
+const flights = [
   {
     provider: "mock",
     airline: "Lufthansa",
@@ -13,18 +17,6 @@ const mockFlights = [
     returnDate: "2026-07-20",
     tripType: "roundtrip",
     price: 240,
-    currency: "EUR",
-    passengerType: "adult"
-  },
-  {
-    provider: "mock",
-    airline: "Turkish Airlines",
-    from: "CGN",
-    to: "IST",
-    departureDate: "2026-08-05",
-    returnDate: null,
-    tripType: "oneway",
-    price: 190,
     currency: "EUR",
     passengerType: "adult"
   },
@@ -55,46 +47,59 @@ const mockFlights = [
   }
 ];
 
-function isTruthy(value) {
-  return ["1", "true", "yes", "evet"].includes(String(value || "").toLowerCase());
-}
+app.get("/", (req, res) => {
+  res.json({
+    message: "Flight API is running",
+    example: "/flights?from=DUS&to=NOP&departureDate=2026-07-10&student=true"
+  });
+});
 
-function normalizeSearchParams(query) {
-  return {
-    from: query.from ? query.from.toUpperCase() : null,
-    to: query.to ? query.to.toUpperCase() : null,
-    departureDate: query.departureDate || null,
-    returnDate: query.returnDate || null,
-    startDate: query.startDate || null,
-    endDate: query.endDate || null,
-    month: query.month || null,
-    tripType: query.tripType || null,
-    adults: query.adults || "1",
-    children: query.children || "0",
-    student: isTruthy(query.student),
-    passengerType: isTruthy(query.student) ? "student" : "adult",
-    airline: query.airline || null
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
+app.get("/flights", (req, res) => {
+  const search = {
+    from: req.query.from ? String(req.query.from).toUpperCase() : null,
+    to: req.query.to ? String(req.query.to).toUpperCase() : null,
+    departureDate: req.query.departureDate || null,
+    returnDate: req.query.returnDate || null,
+    month: req.query.month || null,
+    tripType: req.query.tripType || null,
+    student: isTrue(req.query.student),
+    adults: req.query.adults || "1",
+    children: req.query.children || "0",
+    airline: req.query.airline || null
   };
-}
 
-function filterFlights(flights, search) {
   let results = flights;
 
-  if (search.from) {
-    results = results.filter((flight) => flight.from === search.from);
+  if (search.from) results = results.filter((flight) => flight.from === search.from);
+  if (search.to) results = results.filter((flight) => flight.to === search.to);
+  if (search.departureDate) results = results.filter((flight) => flight.departureDate === search.departureDate);
+  if (search.returnDate) results = results.filter((flight) => flight.returnDate === search.returnDate);
+  if (search.month) results = results.filter((flight) => flight.departureDate.startsWith(search.month));
+  if (search.tripType) results = results.filter((flight) => flight.tripType === search.tripType);
+  if (search.student) results = results.filter((flight) => flight.passengerType === "student");
+  if (search.airline) {
+    results = results.filter((flight) =>
+      flight.airline.toLowerCase().includes(String(search.airline).toLowerCase())
+    );
   }
 
-  if (search.to) {
-    results = results.filter((flight) => flight.to === search.to);
-  }
+  res.json({
+    search,
+    count: results.length,
+    results,
+    warnings: [
+      {
+        provider: "official_airlines",
+        warning: "Live airline and THY student fares need official/partner API access. Website scraping is not used."
+      }
+    ]
+  });
+});
 
-  if (search.departureDate) {
-    results = results.filter((flight) => flight.departureDate === search.departureDate);
-  }
-
-  if (search.returnDate) {
-    results = results.filter((flight) => flight.returnDate === search.returnDate);
-  }
-
-  if (search.startDate) {
-    results = results.filter((flight) => flight.departureDate >= search.startDate);
+app.listen(PORT, () => {
+  console.log(`API running on port ${PORT}`);
+});
